@@ -1,0 +1,8 @@
+AMQP_URI: amqp://${RABBIT_USER}:${RABBIT_PASSWORD}@${RABBIT_HOST}:${RABBIT_PORT}/
+DB_URIS:
+#  "auth_service:Base": postgresql://${DB_USER:postgres}:${DB_PASSWORD:f3n3r}@${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:marketplace}
+  "auth_service:Base": sqlite:///auth.sqlite
+SENTRY:
+  DSN: http://${SENTRY_PUBLIC_KEY}@${SENTRY_HOST}:${SENTRY_PORT}/1
+  CLIENT_CONFIG:
+    site: "Nameko Auth Service"

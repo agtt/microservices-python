@@ -1,0 +1,223 @@
+version: "2"
+
+volumes:
+  pgdb:
+
+services:
+
+
+  # Cloud application
+
+  heartbeat:
+    build:
+      context: services/heartbeat
+    restart: unless-stopped
+    links:
+      - rabbit-cluster
+#      - sentry
+    environment:
+      DYNACONF_JWT_SECRET: "aYoXW26E7w3wiVOq4TnHGEkx0OB4cdHx"
+      RABBIT_PASSWORD: "guest"
+      RABBIT_USER: "guest"
+      RABBIT_HOST: "rabbit-cluster"
+      RABBIT_PORT: "5672"
+      RABBIT_MGMT_PORT: "15672"
+#      SENTRY_PUBLIC_KEY: ${SENTRY_PUBLIC_KEY}
+#      SENTRY_HOST: "sentry"
+#      SENTRY_PORT: "9000"
+
+  hello:
+    build:
+      context: services/hello
+    restart: unless-stopped
+    links:
+      - rabbit-cluster
+#      - sentry
+      - heartbeat
+    environment:
+      RABBIT_PASSWORD: "guest"
+      RABBIT_USER: "guest"
+      RABBIT_HOST: "rabbit-cluster"
+      RABBIT_PORT: "5672"
+      RABBIT_MGMT_PORT: "15672"
+#      SENTRY_PUBLIC_KEY: ${SENTRY_PUBLIC_KEY}
+#      SENTRY_HOST: "sentry"
+#      SENTRY_PORT: "9000"
+
+  woocommerce:
+    build:
+      context: services/woo
+    restart: unless-stopped
+    links:
+      - rabbit-cluster
+      #      - sentry
+      - heartbeat
+    environment:
+      RABBIT_PASSWORD: "guest"
+      RABBIT_USER: "guest"
+      RABBIT_HOST: "rabbit-cluster"
+      RABBIT_PORT: "5672"
+      RABBIT_MGMT_PORT: "15672"
+
+  credentials:
+    build:
+      context: services/credentials
+    restart: unless-stopped
+    links:
+      - rabbit-cluster
+      - heartbeat
+      - postgres
+    environment:
+      RABBIT_PASSWORD: "guest"
+      RABBIT_USER: "guest"
+      RABBIT_HOST: "rabbit-cluster"
+      RABBIT_PORT: "5672"
+      RABBIT_MGMT_PORT: "15672"
+
+
+  auth:
+    build:
+      context: services/auth
+    restart: unless-stopped
+    links:
+      - rabbit-cluster
+#      - sentry
+      - heartbeat
+      - postgres
+    environment:
+      DYNACONF_JWT_SECRET: "aYoXW26E7w3wiVOq4TnHGEkx0OB4cdHx"
+      RABBIT_PASSWORD: "guest"
+      RABBIT_USER: "guest"
+      RABBIT_HOST: "rabbit-cluster"
+      RABBIT_PORT: "5672"
+      RABBIT_MGMT_PORT: "15672"
+#      SENTRY_PUBLIC_KEY: ${SENTRY_PUBLIC_KEY}
+#      SENTRY_HOST: "sentry"
+#      SENTRY_PORT: "9000"
+
+  gateway:
+    build:
+      context: gateway
+    restart: unless-stopped
+    volumes: ['./gateway:/app']
+    links:
+      - rabbit-cluster
+      - redis
+    depends_on:
+      - hello
+    ports:
+      - 8000:8000
+    environment:
+      DYNACONF_JWT_SECRET: "aYoXW26E7w3wiVOq4TnHGEkx0OB4cdHx"
+      RABBIT_PASSWORD: "guest"
+      RABBIT_USER: "guest"
+      RABBIT_HOST: "rabbit-cluster"
+      RABBIT_PORT: "5672"
+      RABBIT_MGMT_PORT: "15672"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      GATEWAY_HOST: "0.0.0.0"
+      GATEWAY_PORT: "8000"
+      FLASK_ENV: "testing"
+      ENV_FOR_DYNACONF: "testing"
+
+
+  # Pre-requisities
+
+  rabbit-master:
+    build:
+      context: services/rabbitmq-master
+    restart: unless-stopped
+    hostname: rabbit-master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ZmKpvN2hDMpb5mYY
+
+  rabbit-slave-1:
+    build:
+      context: services/rabbitmq-slave
+    restart: unless-stopped
+    hostname: rabbit-slave-1
+    depends_on:
+      - rabbit-master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ZmKpvN2hDMpb5mYY
+
+  rabbit-slave-2:
+    build:
+      context: services/rabbitmq-slave
+    restart: unless-stopped
+    hostname: rabbit-slave-2
+    depends_on:
+      - rabbit-master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ZmKpvN2hDMpb5mYY
+
+  rabbit-cluster:
+    build:
+      context: haproxy
+    restart: unless-stopped
+    hostname: rabbit-cluster
+    links:
+      - rabbit-master
+      - rabbit-slave-1
+      - rabbit-slave-2
+    ports:
+      - 15672:15672
+      - 5672:5672
+
+  redis:
+    image: redis:5-alpine
+    restart: unless-stopped
+
+  postgres:
+    container_name: postgres
+    image: postgres:11-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "f3n3r"
+      POSTGRES_DB: "marketplace"
+    ports:
+      - 5433:5432
+    volumes:
+      - pgdb:/var/lib/postgresql/data
+
+#  sentry:
+#    image: sentry:9
+#    ports:
+#      - 9000:9000
+#    links:
+#      - redis
+#      - postgres
+#    environment:
+#      SENTRY_SECRET_KEY: "OcR3opOZtaxwptoW3peiwIHi4r9fgBIp"
+#      SENTRY_POSTGRES_HOST: postgres
+#      SENTRY_DB_USER: sentry
+#      SENTRY_DB_PASSWORD: sentry
+#      SENTRY_REDIS_HOST: redis
+#
+#  sentry-cron:
+#    image: sentry:9
+#    links:
+#      - redis
+#      - postgres
+#    command: "sentry run cron"
+#    environment:
+#      SENTRY_SECRET_KEY: "OcR3opOZtaxwptoW3peiwIHi4r9fgBIp"
+#      SENTRY_POSTGRES_HOST: postgres
+#      SENTRY_DB_USER: sentry
+#      SENTRY_DB_PASSWORD: sentry
+#      SENTRY_REDIS_HOST: redis
+#
+#  sentry-worker:
+#    image: sentry:9
+#    links:
+#      - redis
+#      - postgres
+#    command: "sentry run worker"
+#    environment:
+#      SENTRY_SECRET_KEY: "OcR3opOZtaxwptoW3peiwIHi4r9fgBIp"
+#      SENTRY_POSTGRES_HOST: postgres
+#      SENTRY_DB_USER: sentry
+#      SENTRY_DB_PASSWORD: sentry
+#      SENTRY_REDIS_HOST: redis

@@ -1,0 +1,99 @@
+version: "2"
+
+volumes:
+  pgdb:
+
+services:
+
+# Pre-requisities
+
+  rabbit-master:
+    build:
+      context: services/rabbitmq-master
+    hostname: rabbit-master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ZmKpvN2hDMpb5mYY
+
+  rabbit-slave-1:
+    build:
+      context: services/rabbitmq-slave
+    hostname: rabbit-slave-1
+    depends_on:
+      - rabbit-master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ZmKpvN2hDMpb5mYY
+
+  rabbit-slave-2:
+    build:
+      context: services/rabbitmq-slave
+    hostname: rabbit-slave-2
+    depends_on:
+      - rabbit-master
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ZmKpvN2hDMpb5mYY
+
+  rabbit-cluster:
+    build:
+      context: haproxy
+    hostname: rabbit-cluster
+    links:
+      - rabbit-master
+      - rabbit-slave-1
+      - rabbit-slave-2
+    ports:
+      - 15672:15672
+      - 5672:5672
+
+  redis:
+    image: redis:5-alpine
+    ports:
+      - 6379:6379
+
+  postgres:
+    image: postgres:11-alpine
+    environment:
+      POSTGRES_USER: sentry
+      POSTGRES_PASSWORD: sentry
+      POSTGRES_DB: sentry
+    volumes:
+      - pgdb:/var/lib/postgresql/data
+
+  sentry:
+    image: sentry:9
+    ports:
+      - 9000:9000
+    links:
+      - redis
+      - postgres
+    environment:
+      SENTRY_SECRET_KEY: "OcR3opOZtaxwptoW3peiwIHi4r9fgBIp"
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: redis
+
+  sentry-cron:
+    image: sentry:9
+    links:
+      - redis
+      - postgres
+    command: "sentry run cron"
+    environment:
+      SENTRY_SECRET_KEY: "OcR3opOZtaxwptoW3peiwIHi4r9fgBIp"
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: redis
+
+  sentry-worker:
+    image: sentry:9
+    links:
+      - redis
+      - postgres
+    command: "sentry run worker"
+    environment:
+      SENTRY_SECRET_KEY: "OcR3opOZtaxwptoW3peiwIHi4r9fgBIp"
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: sentry
+      SENTRY_DB_PASSWORD: sentry
+      SENTRY_REDIS_HOST: redis

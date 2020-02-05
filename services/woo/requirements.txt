@@ -1,0 +1,6 @@
+nameko
+nameko_sentry
+circuitbreaker
+woocommerce
+nameko_sqlalchemy
+alembic==1.0.10
