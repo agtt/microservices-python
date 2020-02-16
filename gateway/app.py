@@ -15,8 +15,8 @@ app.config.update(dict(NAMEKO_AMQP_URI=settings["rabbit_uri"],
                        NAMEKO_POOL_RECYCLE=settings["pool_recycle"]))
 
 # Flask RESTplus setup
-api = Api(app, version='1.0', title='Marketplace Microservices - OPLOG',
-          description='Woocommerce, N11, Hepsiburada, Gittigidiyor, Amazon, EPTT Webservices',
+api = Api(app, version='1.0', title='Marketplace Microservices - IOVA',
+          description='Amazon, Ebay, Etsy, Gumtree  Webservices',
           authorizations=authorizations)
 
 # Flask Limiter setup

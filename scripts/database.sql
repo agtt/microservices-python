@@ -8,5 +8,5 @@ CREATE TABLE users (
 );
 ALTER SEQUENCE users_name_id_seq
 OWNED BY users.id;
-INSERT INTO users(id, username, password) VALUES(1, 'oplog', 'oplog');
+INSERT INTO users(id, username, password) VALUES(1, 'iova', 'iova');
 INSERT INTO users(id, username, password) VALUES(2, 'agit', 'agit');

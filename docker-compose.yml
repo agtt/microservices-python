@@ -99,7 +99,7 @@ services:
     build:
       context: gateway
     restart: unless-stopped
-    volumes: ['./gateway:/app']
+#    volumes: ['./gateway:/app']
     links:
       - rabbit-cluster
       - redis
